@@ -1,5 +1,10 @@
 import { TDocumentDefinitions, StyleDictionary } from 'pdfmake/interfaces';
 import { DateFormatter, getFullNameCompany, getrucCompany, formatPeriodo, getDocumentType } from 'src/helpers';
+import * as fs from 'fs';
+import * as path from 'path';
+
+const firmaPath = path.join(__dirname, '../assets/sing.png');
+const firmaBase64 = 'data:image/png;base64,' + fs.readFileSync(firmaPath).toString('base64')
 
 export interface PayslipProps {
   // Empresa
@@ -10,7 +15,7 @@ export interface PayslipProps {
   Documento: string;
   Cargo: string;
   Situacion: string;
-  FechaIngreso: Date;
+  FechaIngreso: Date | null;
 
   // Periodo
   Periodo: string;
@@ -36,20 +41,37 @@ export interface PayslipProps {
   MSLMotivo: string;
   MSLDias: number;
 
+  // Otros empleadores
+  OtrosEmpleadoresRenta5taCategoria: string;
+
   // Ingresos
   RemuneracionBasica: number;
   ComisionesODestajos: number;
   VacacionesTruncas: number;
   BonificacionExtra: number;
   Gratificacion: number;
+  Utilidades: number;
+
+  CompensacionTiempoServicio: number;
+  CompensacionVacacional: number;
+  CondicionesTrabajo: number;
+  DinamicasTrabajo: number;
+  BonoCapacitacion: number;
+
   RemuneracionMes: number;
 
   // Descuentos
-  ComisionAFP: number;
-  AFPObligatorio: number;
-  SeguroAFP: number;
-  RentaQuinta: number;
   Tardanzas: number;
+  Inasistencias: number;
+  Adelanto: number;
+
+  ComisionAFPPorcentual: number;
+  AFPObligatorio: number;
+  PrimaSeguroAFP: number;
+  SistemaNACPensionesDL19990: number;
+  RentaQuinta: number;
+
+  OtrosDescNoDeducBASEIMPONIB: number;
 
   // Aportes empleador
   PolizaSeguro: number;
@@ -73,12 +95,35 @@ const styles: StyleDictionary = {
 export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
   const {
     Empresa,
+
+    // Trabajador
     ApellidosNombres,
     Documento,
     Cargo,
     FechaIngreso,
     Periodo,
     RegimenPensionario,
+    TipoTrabajador,
+    Condicion,
+    Situacion,
+    CUSPP,
+
+    // Jornadas
+    DiasLaborados,
+    DiasNoLaborados,
+    DiasSubsidiados,
+    JOTotalHoras,
+    JOMinutos,
+    STTotalHoras,
+    STMinutos,
+
+    // Suspensiones
+    MSLTipo,
+    MSLMotivo,
+    MSLDias,
+
+    // Otros empleadores
+    OtrosEmpleadoresRenta5taCategoria,
 
     // INGRESOS
     RemuneracionBasica,
@@ -86,21 +131,228 @@ export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
     VacacionesTruncas,
     Gratificacion,
     BonificacionExtra,
+    CompensacionTiempoServicio,
+    Utilidades,
+    CompensacionVacacional,
+    CondicionesTrabajo,
+    DinamicasTrabajo,
+    BonoCapacitacion,
+    RemuneracionMes,
 
     // DESCUENTOS
     Tardanzas,
-    ComisionAFP,
-    SeguroAFP,
+    Inasistencias,
+    Adelanto,
+    ComisionAFPPorcentual,
+    PrimaSeguroAFP,
     AFPObligatorio,
+    SistemaNACPensionesDL19990,
     RentaQuinta,
-    JOTotalHoras,
+    OtrosDescNoDeducBASEIMPONIB,
 
     // APORTES EMPLEADOR
     Essalud,
-    CUSPP,
-    // NETO
+    PolizaSeguro,
+
+    // RESULTADO
     NetoPagar
   } = props;
+
+  const body: any[] = [
+
+    [
+      { text: 'Ingresos', style: 'textBody', fillColor: '#D0E4FF' },
+      { text: '', style: 'textBody', alignment: 'center', fillColor: '#D0E4FF' },
+      { text: '', style: 'textBody', alignment: 'center', fillColor: '#D0E4FF' },
+      { text: '', style: 'textBody', alignment: 'center', fillColor: '#D0E4FF' },
+      { text: '', style: 'textBody', alignment: 'center', fillColor: '#D0E4FF' }
+    ]
+
+  ];
+
+  if (ComisionesODestajos !== 0) {
+    body.push([
+      { text: '0103', style: 'textBody', alignment: 'center' },
+      { text: 'COMISIONES O DESTAJO', style: 'textBody' },
+      { text: ComisionesODestajos, style: 'textBody', alignment: 'center' },
+      { text: '', style: 'textBody' },
+      { text: '', style: 'textBody' }
+    ]);
+  }
+
+  if (VacacionesTruncas !== 0) {
+    body.push([
+      { text: '0114', style: 'textBody', alignment: 'center' },
+      { text: 'VACACIONES TRUNCAS', style: 'textBody' },
+      { text: VacacionesTruncas, style: 'textBody', alignment: 'center' },
+      { text: '', style: 'textBody' },
+      { text: '', style: 'textBody' }
+    ]);
+  }
+
+  if (CompensacionVacacional !== 0) {
+    body.push([
+      { text: '0117', style: 'textBody', alignment: 'center' },
+      { text: 'COMPENSACIÓN VACACIONAL', style: 'textBody' },
+      { text: CompensacionVacacional, style: 'textBody', alignment: 'center' },
+      { text: '', style: 'textBody' },
+      { text: '', style: 'textBody' }
+    ]);
+  }
+
+  if (RemuneracionMes !== 0) {
+    body.push([
+      { text: '0121', style: 'textBody', alignment: 'center' },
+      { text: 'REMUNERACIÓN O JORNAL BÁSICO', style: 'textBody' },
+      { text: RemuneracionMes, style: 'textBody', alignment: 'center' },
+      { text: '', style: 'textBody' },
+      { text: '', style: 'textBody' }
+    ]);
+  }
+
+  if (Utilidades !== 0) {
+    body.push([
+      { text: '0911', style: 'textBody', alignment: 'center' },
+      { text: 'PARTICIPACIÓN EN LAS UTILIDADES', style: 'textBody' },
+      { text: Utilidades, style: 'textBody', alignment: 'center' },
+      { text: '', style: 'textBody' },
+      { text: '', style: 'textBody' }
+    ]);
+  }
+
+  if (CondicionesTrabajo !== 0 || DinamicasTrabajo !== 0) {
+    body.push([
+      { text: '0917', style: 'textBody', alignment: 'center' },
+      { text: 'CONDICIONES DE TRABAJO', style: 'textBody' },
+      { text: CondicionesTrabajo + DinamicasTrabajo, style: 'textBody', alignment: 'center' },
+      { text: '', style: 'textBody' },
+      { text: '', style: 'textBody' }
+    ]);
+  }
+
+  if (BonoCapacitacion !== 0) {
+    body.push([
+      { text: '1001', style: 'textBody', alignment: 'center' },
+      { text: 'BONO POR CAPACITACIÓN', style: 'textBody' },
+      { text: BonoCapacitacion, style: 'textBody', alignment: 'center' },
+      { text: '', style: 'textBody' },
+      { text: '', style: 'textBody' }
+    ]);
+  }
+
+  body.push([
+    { text: 'Descuentos', style: 'textBody', fillColor: '#D0E4FF' },
+    { text: '', style: 'textBody', alignment: 'center', fillColor: '#D0E4FF' },
+    { text: '', style: 'textBody', alignment: 'center', fillColor: '#D0E4FF' },
+    { text: '', style: 'textBody', alignment: 'center', fillColor: '#D0E4FF' },
+    { text: '', style: 'textBody', alignment: 'center', fillColor: '#D0E4FF' }
+  ]);
+
+  if (Adelanto !== 0) {
+    body.push([
+      { text: '0701', style: 'textBody', alignment: 'center' },
+      { text: 'ADELANTO', style: 'textBody' },
+      { text: '', style: 'textBody' },
+      { text: Adelanto, style: 'textBody', alignment: 'right' },
+      { text: '', style: 'textBody' }
+    ]);
+  }
+
+  if (Tardanzas !== 0) {
+    body.push([
+      { text: '0704', style: 'textBody', alignment: 'center' },
+      { text: 'TARDANZAS', style: 'textBody' },
+      { text: '', style: 'textBody' },
+      { text: Tardanzas, style: 'textBody', alignment: 'right' },
+      { text: '', style: 'textBody' }
+    ]);
+  }
+
+  if (Inasistencias !== 0) {
+    body.push([
+      { text: '0705', style: 'textBody', alignment: 'center' },
+      { text: 'INASISTENCIAS', style: 'textBody' },
+      { text: '', style: 'textBody' },
+      { text: Inasistencias, style: 'textBody', alignment: 'right' },
+      { text: '', style: 'textBody' }
+    ]);
+  }
+
+  if (OtrosDescNoDeducBASEIMPONIB !== 0) {
+    body.push([
+      { text: '0706', style: 'textBody', alignment: 'center' },
+      { text: 'OTROS DESC NO DEDUC DE BASE IMPONIB', style: 'textBody' },
+      { text: '', style: 'textBody' },
+      { text: OtrosDescNoDeducBASEIMPONIB, style: 'textBody', alignment: 'right' },
+      { text: '', style: 'textBody' }
+    ]);
+  }
+
+  body.push([
+    { text: 'Aportes del Trabajador', style: 'textBody', fillColor: '#D0E4FF' },
+    { text: '', style: 'textBody', alignment: 'center', fillColor: '#D0E4FF' },
+    { text: '', style: 'textBody', alignment: 'center', fillColor: '#D0E4FF' },
+    { text: '', style: 'textBody', alignment: 'center', fillColor: '#D0E4FF' },
+    { text: '', style: 'textBody', alignment: 'center', fillColor: '#D0E4FF' }
+  ]);
+
+  if (ComisionAFPPorcentual !== 0) {
+    body.push([
+      { text: '0601', style: 'textBody', alignment: 'center' },
+      { text: 'COMISIÓN AFP PORCENTUAL', style: 'textBody' },
+      { text: '', style: 'textBody' },
+      { text: ComisionAFPPorcentual, style: 'textBody', alignment: 'right' },
+      { text: '', style: 'textBody' }
+    ]);
+  }
+
+  if (RentaQuinta !== 0) {
+    body.push([
+      { text: '0605', style: 'textBody', alignment: 'center' },
+      { text: 'RENTA QUINTA CATEGORÍA RETENCIONES', style: 'textBody' },
+      { text: '', style: 'textBody' },
+      { text: RentaQuinta, style: 'textBody', alignment: 'right' },
+      { text: '', style: 'textBody' }
+    ]);
+  }
+
+  if (PrimaSeguroAFP !== 0) {
+    body.push([
+      { text: '0606', style: 'textBody', alignment: 'center' },
+      { text: 'PRIMA DE SEGURO AFP', style: 'textBody' },
+      { text: '', style: 'textBody' },
+      { text: PrimaSeguroAFP, style: 'textBody', alignment: 'right' },
+      { text: '', style: 'textBody' }
+    ]);
+  }
+
+  if (SistemaNACPensionesDL19990 !== 0) {
+    body.push([
+      { text: '0607', style: 'textBody', alignment: 'center' },
+      { text: 'SISTEMA NAC. DE PENSIONES DL 19990', style: 'textBody' },
+      { text: '', style: 'textBody' },
+      { text: SistemaNACPensionesDL19990, style: 'textBody', alignment: 'right' },
+      { text: '', style: 'textBody' }
+    ]);
+  }
+
+  if (AFPObligatorio !== 0) {
+    body.push([
+      { text: '0608', style: 'textBody', alignment: 'center' },
+      { text: 'SPP - APORTACIÓN OBLIGATORIA', style: 'textBody' },
+      { text: '', style: 'textBody' },
+      { text: AFPObligatorio, style: 'textBody', alignment: 'right' },
+      { text: '', style: 'textBody' }
+    ]);
+  }
+
+  body.push([
+    { text: 'Neto a Pagar', style: 'textBody', fillColor: '#D0E4FF' },
+    { text: '', style: 'textBody', fillColor: '#D0E4FF' },
+    { text: '', style: 'textBody', fillColor: '#D0E4FF' },
+    { text: '', style: 'textBody', fillColor: '#D0E4FF' },
+    { text: NetoPagar, style: 'textBody', alignment: 'right', fillColor: '#D0E4FF' }
+  ]);
 
   return {
     styles,
@@ -170,7 +422,7 @@ export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
         margin: [0, 0, 0, 20]
       },
 
-        //
+      //
       {
         table: {
           widths: ['*', '*', '*'],
@@ -195,7 +447,7 @@ export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
                 fillColor: '#D0E4FF'
               }
             ],
-            
+
             [
               {
                 table: {
@@ -204,7 +456,7 @@ export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
                     [
                       {
                         table: {
-                          widths: ['49%', 1, '49%'],
+                          widths: ['*', 1, '*'],
                           body: [
                             [
                               {
@@ -223,6 +475,7 @@ export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
                             ]
                           ]
                         },
+                        margin: [-4, -1, -4, -1],
                         layout: {
                           hLineWidth: () => 0,
                           vLineWidth: () => 0,
@@ -233,7 +486,7 @@ export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
                         }
                       }
                     ],
-            
+
                     [
                       {
                         canvas: [
@@ -249,7 +502,7 @@ export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
                         margin: [15, 2, 15, 2]
                       }
                     ],
-            
+
                     [
                       {
                         table: {
@@ -262,6 +515,7 @@ export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
                             ]
                           ]
                         },
+                        margin: [-4, -1, -4, -1],
                         layout: {
                           hLineWidth: () => 0,
                           vLineWidth: () => 0,
@@ -283,11 +537,11 @@ export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
                   paddingBottom: () => 0
                 }
               },
-            
+
               { text: ApellidosNombres, alignment: 'center', style: 'textBody', margin: [0, 8, 0, 0] },
-              { text: 'ACTIVO O SUBSIDIADO', alignment: 'center', style: 'textBody', margin: [0, 8, 0, 0] }
+              { text: Situacion, alignment: 'center', style: 'textBody', margin: [0, 8, 0, 0] }
             ]
-            
+
           ]
         }
       },
@@ -323,7 +577,7 @@ export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
                 fillColor: '#D0E4FF'
               }
             ],
-            
+
             [
               {
                 text: `${FechaIngreso}`,
@@ -336,7 +590,9 @@ export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
                 alignment: 'center'
               },
               {
-                text: `${RegimenPensionario}`,
+                text: SistemaNACPensionesDL19990 != 0
+                  ? 'DL 19990 - SIST NAC DE'
+                  : RegimenPensionario,
                 style: 'textBody',
                 alignment: 'center'
               },
@@ -346,11 +602,11 @@ export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
                 alignment: 'center'
               }
             ]
-            ]
-          }        
+          ]
+        }
       },
 
-        //
+      //
       {
         table: {
           widths: ['*', '*', '*', '*', '*', '*'],
@@ -364,25 +620,26 @@ export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
               { text: 'Jornada Ordinaria', style: 'textBody', alignment: 'center', fillColor: '#D0E4FF' },
               { text: 'Sobretiempo', style: 'textBody', alignment: 'center', fillColor: '#D0E4FF' }
             ],
-      
+
 
             [
-              { text: '31', style: 'textBody', alignment: 'center', margin: [0, 8, 0, 0] },
-              { text: '0', style: 'textBody', alignment: 'center', margin: [0, 8, 0, 0] },
+              { text: DiasLaborados, style: 'textBody', alignment: 'center', margin: [0, 8, 0, 0] },
+              { text: DiasNoLaborados, style: 'textBody', alignment: 'center', margin: [0, 8, 0, 0] },
               { text: '0', style: 'textBody', alignment: 'center', margin: [0, 8, 0, 0] },
               { text: 'Domiciliado', style: 'textBody', alignment: 'center', margin: [0, 8, 0, 0] },
-      
+
               {
                 stack: [
                   {
                     table: {
-                      widths: ['49%', 1, '49%'],
+                      widths: ['*', 1, '*'],
                       body: [[
                         { text: 'Total Horas', style: 'textBody', alignment: 'center', fillColor: '#D0E4FF' },
                         { text: '', fillColor: '#000' },
                         { text: 'Minutos', style: 'textBody', alignment: 'center', fillColor: '#D0E4FF' }
                       ]]
                     },
+                    margin: [-4, -1, -4, 0],
                     layout: {
                       hLineWidth: () => 0,
                       vLineWidth: () => 0,
@@ -392,7 +649,7 @@ export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
                       paddingBottom: () => 2
                     }
                   },
-              
+
                   {
                     canvas: [
                       {
@@ -406,16 +663,17 @@ export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
                     ],
                     margin: [0, 0, 0, 0]
                   },
-              
+
                   {
                     table: {
-                      widths: ['49%', 1, '49%'],
+                      widths: ['*', 1, '*'],
                       body: [[
                         { text: JOTotalHoras, style: 'textBody', alignment: 'center' },
                         { text: '', fillColor: '#000' },
                         { text: '0', style: 'textBody', alignment: 'center' }
                       ]]
                     },
+                    margin: [-4, -1, -4, -1],
                     layout: {
                       hLineWidth: () => 0,
                       vLineWidth: () => 0,
@@ -427,18 +685,19 @@ export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
                   }
                 ]
               },
-      
+
               {
                 stack: [
                   {
                     table: {
-                      widths: ['49%', 1, '49%'],
+                      widths: ['*', 1, '*'],
                       body: [[
                         { text: 'Total Horas', style: 'textBody', alignment: 'center', fillColor: '#D0E4FF' },
                         { text: '', fillColor: '#000' },
                         { text: 'Minutos', style: 'textBody', alignment: 'center', fillColor: '#D0E4FF' }
                       ]]
                     },
+                    margin: [-4, -1, -4, -1],
                     layout: {
                       hLineWidth: () => 0,
                       vLineWidth: () => 0,
@@ -448,7 +707,7 @@ export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
                       paddingBottom: () => 2
                     }
                   },
-              
+
                   {
                     canvas: [
                       {
@@ -462,7 +721,7 @@ export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
                     ],
                     margin: [0, 0, 0, 0]
                   },
-              
+
                   {
                     table: {
                       widths: ['49%', 1, '49%'],
@@ -472,13 +731,14 @@ export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
                         { text: '0', style: 'textBody', alignment: 'center' }
                       ]]
                     },
+                    margin: [-4, -1, -4, -1],
                     layout: {
                       hLineWidth: () => 0,
                       vLineWidth: () => 0,
                       paddingLeft: () => 0,
                       paddingRight: () => 0,
                       paddingTop: () => 2,
-                      paddingBottom: () => 0
+                      paddingBottom: () => 2
                     }
                   }
                 ]
@@ -490,7 +750,7 @@ export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
         }
       },
 
-        //
+      //
       {
         table: {
           widths: ['70%', '30%'],
@@ -515,6 +775,7 @@ export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
                         { text: 'N.º Días', style: 'textBody', alignment: 'center', fillColor: '#D0E4FF' }
                       ]]
                     },
+                    margin: [-4, -2, -4, -1],
                     layout: {
                       hLineWidth: () => 0,
                       vLineWidth: () => 0,
@@ -524,7 +785,7 @@ export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
                       paddingBottom: () => 2
                     }
                   },
-              
+
                   {
                     canvas: [
                       {
@@ -538,7 +799,7 @@ export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
                     ],
                     margin: [0, 0, 0, 0]
                   },
-              
+
                   {
                     table: {
                       widths: ['*', 1, '*', 1, '*'],
@@ -550,6 +811,7 @@ export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
                         { text: '0', style: 'textBody', alignment: 'center' },
                       ]]
                     },
+                    margin: [-4, -1, -4, -1],
                     layout: {
                       hLineWidth: () => 0,
                       vLineWidth: () => 0,
@@ -596,97 +858,7 @@ export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
                 {
                   table: {
                     widths: ['15%', '35%', '20%', '10%', '20%'],
-                    body: [
-                      [
-                        { text: 'Ingresos', style: 'textBody', fillColor: '#D0E4FF' },
-                        { text: '', style: 'textBody', alignment: 'center', fillColor: '#D0E4FF' },
-                        { text: '', style: 'textBody', alignment: 'center', fillColor: '#D0E4FF' },
-                        { text: '', style: 'textBody', alignment: 'center', fillColor: '#D0E4FF' },
-                        { text: '', style: 'textBody', alignment: 'center', fillColor: '#D0E4FF' }
-                      ],
-
-                      [
-
-                        { text: '0121', style: 'textBody', alignment: 'center' },
-                        { text: 'REMUNERACIÓN O JORNAL BÁSICO', style: 'textBody'},
-                        { text: RemuneracionBasica, style: 'textBody', alignment: 'center' },
-                        { text: '', style: 'textBody' },
-                        { text: '', style: 'textBody' }
-      
-                      ],
-      
-                      [
-                        { text: 'Descuentos', style: 'textBody', fillColor: '#D0E4FF' },
-                        { text: '', style: 'textBody', alignment: 'center', fillColor: '#D0E4FF' },
-                        { text: '', style: 'textBody', alignment: 'center', fillColor: '#D0E4FF' },
-                        { text: '', style: 'textBody', alignment: 'center', fillColor: '#D0E4FF' },
-                        { text: '', style: 'textBody', alignment: 'center', fillColor: '#D0E4FF' }
-                      ],
-      
-                      [
-                        { text: '0704', style: 'textBody', alignment: 'center' },
-                        { text: 'TARDANZAS', style: 'textBody' },
-                        { text: '', style: 'textBody', alignment: 'center' },
-                        { text: Tardanzas, style: 'textBody', alignment: 'right' },
-                        { text: '', style: 'textBody', alignment: 'center' }
-                      ],
-
-                      [
-                        { text: 'Aportes del Trabajador', style: 'textBody', fillColor: '#D0E4FF' },
-                        { text: '', style: 'textBody', alignment: 'center', fillColor: '#D0E4FF' },
-                        { text: '', style: 'textBody', alignment: 'center', fillColor: '#D0E4FF' },
-                        { text: '', style: 'textBody', alignment: 'center', fillColor: '#D0E4FF' },
-                        { text: '', style: 'textBody', alignment: 'center', fillColor: '#D0E4FF' }
-                      ],
-      
-                      [
-                        { text: '0601', style: 'textBody', alignment: 'center'},
-                        { text: 'COMISIÓN AFP PORCENTUAL', style: 'textBody' },
-                        { text: '', style: 'textBody', alignment: 'center' },
-                        { text: '0', style: 'textBody', alignment: 'right'},
-                        { text: '', style: 'textBody', alignment: 'center' }
-                      ],
-      
-                      [
-                        { text: '0605', style: 'textBody', alignment: 'center' },
-                        { text: 'RENTA QUINTA CATEGORÍA RETENCIONES', style: 'textBody' },
-                        { text: '', style: 'textBody', alignment: 'center'},
-                        { text: '0', style: 'textBody', alignment: 'right' },
-                        { text: '', style: 'textBody', alignment: 'center' }
-                      ],
-      
-                      [
-                        { text: '0606', style: 'textBody', alignment: 'center'},
-                        { text: 'PRIMA DE SEGURO AFP', style: 'textBody'},
-                        { text: '', style: 'textBody', alignment: 'center' },
-                        { text: SeguroAFP, style: 'textBody', alignment: 'right' },
-                        { text: '', style: 'textBody', alignment: 'center' }
-                      ],
-
-                      [
-                        { text: '0607', style: 'textBody', alignment: 'center' },
-                        { text: 'SISTEMA NAC. DE PENSIONES DL 19990', style: 'textBody' },
-                        { text: '', style: 'textBody', alignment: 'center'},
-                        { text: '0', style: 'textBody', alignment: 'right' },
-                        { text: '', style: 'textBody', alignment: 'center' }
-                      ],
-      
-                      [
-                        { text: '0608', style: 'textBody', alignment: 'center' },
-                        { text: 'SPP - APORTACIÓN OBLIGATORIA', style: 'textBody' },
-                        { text: '', style: 'textBody', alignment: 'center' },
-                        { text: AFPObligatorio, style: 'textBody', alignment: 'right' },
-                        { text: '', style: 'textBody', alignment: 'center' }
-                      ],
-
-                      [
-                        { text: 'Neto a Pagar', style: 'textBody', fillColor: '#D0E4FF' },
-                        { text: '', style: 'textBody', fillColor: '#D0E4FF' },
-                        { text: '', style: 'textBody', fillColor: '#D0E4FF' },
-                        { text: '', style: 'textBody', fillColor: '#D0E4FF' },
-                        { text: NetoPagar, style: 'textBody', alignment: 'right', fillColor: '#D0E4FF' }
-                      ]
-                    ]
+                    body: body
                   },
                   layout: {
                     hLineWidth: () => 0,
@@ -697,7 +869,7 @@ export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
                     paddingBottom: () => 2
                   }
                 },
-      
+
                 // línea inferior
                 {
                   canvas: [{
@@ -748,17 +920,17 @@ export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
                     widths: ['15%', '60%', '25%'],
                     body: [
                       [
-                        { text: '0803', style: 'textBody', alignment: 'center'},
-                        { text: 'PÓLIZA DE SEGURO - D. LEG. 688', style: 'textBody'},
+                        { text: '0803', style: 'textBody', alignment: 'center' },
+                        { text: 'PÓLIZA DE SEGURO - D. LEG. 688', style: 'textBody' },
                         { text: '14.75', style: 'textBody', alignment: 'right' }
                       ],
 
                       [
 
                         { text: '0804', style: 'textBody', alignment: 'center' },
-                        { text: 'ESSALUD(REGULAR CBSSP AGRAR/AC)TRAB', style: 'textBody'},
+                        { text: 'ESSALUD(REGULAR CBSSP AGRAR/AC)TRAB', style: 'textBody' },
                         { text: Essalud, style: 'textBody', alignment: 'right' }
-      
+
                       ]
                     ]
                   },
@@ -771,7 +943,7 @@ export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
                     paddingBottom: () => 2
                   }
                 },
-      
+
               ]
             }
           ]]
@@ -792,7 +964,22 @@ export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
         table: {
           widths: ['*', '*'],
           body: [
+            // --- FILA 1: Solo la imagen del empleador ---
             [
+              {
+                image: firmaBase64,
+                width: 80,
+                alignment: 'center',
+                margin: [0, 0, 0, 5]
+              },
+              {
+                text: '' // Celda vacía a la derecha para que la tabla sea simétrica
+              }
+            ],
+
+            // --- FILA 2: Las líneas y los nombres (quedarán perfectamente alineadas) ---
+            [
+              // Lado Izquierdo (Empleador)
               {
                 stack: [
                   {
@@ -822,7 +1009,8 @@ export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
                   }
                 ]
               },
-      
+
+              // Lado Derecho (Trabajador)
               {
                 stack: [
                   {
@@ -867,7 +1055,6 @@ export const getPayslipReport = (props: PayslipProps): TDocumentDefinitions => {
 
 
 
-     
     ]
   };
 };

@@ -6,6 +6,7 @@ import {
 
 @Entity('tbPaySlip')
 export class Payslip {
+
   @PrimaryGeneratedColumn()
   Id: number;
 
@@ -85,13 +86,43 @@ export class Payslip {
   GratificacionProp2935130334: number;
 
   @Column({ type: 'decimal', precision: 13, scale: 2, nullable: true })
+  ReparticionUtilidades: number;
+
+  @Column({ type: 'decimal', precision: 13, scale: 2, nullable: true })
+  CompensacionTimpoServicio: number;
+
+  @Column({ type: 'decimal', precision: 13, scale: 2, nullable: true })
+  CompensacionVacacional: number;
+
+  @Column({ type: 'decimal', precision: 13, scale: 2, nullable: true })
+  CondicionesTrabajo: number;
+
+  @Column({ type: 'decimal', precision: 13, scale: 2, nullable: true })
+  DinamicasTrabajo: number;
+
+  @Column({ type: 'decimal', precision: 13, scale: 2, nullable: true })
+  BonoCapacitacion: number;
+
+  @Column({ type: 'decimal', precision: 13, scale: 2, nullable: true })
+  OtrosDescNoDeducBASEIMPONIB: number;
+
+  @Column({ type: 'decimal', precision: 13, scale: 2, nullable: true })
   Tardanzas: number;
+
+  @Column({ type: 'decimal', precision: 13, scale: 2, nullable: true })
+  Inasistencias: number;
+
+  @Column({ type: 'decimal', precision: 13, scale: 2, nullable: true })
+  Adelanto: number;
 
   @Column({ type: 'decimal', precision: 13, scale: 2, nullable: true })
   ComisionAFPPorcentual: number;
 
   @Column({ type: 'decimal', precision: 13, scale: 2, nullable: true })
   RentaQuintaCategoriaRetenciones: number;
+
+  @Column({ type: 'decimal', precision: 13, scale: 2, nullable: true })
+  SistemaNACPensionesDL19990: number;
 
   @Column({ type: 'decimal', precision: 13, scale: 2, nullable: true })
   PrimaSeguroAFP: number;

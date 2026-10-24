@@ -49,6 +49,8 @@ export class PaidCertificatesController {
       throw new UnauthorizedException('Empleado no encontrado');
     }
 
+    await this.service.registerPayslipView(dni, ciclo);
+
     response.setHeader('Content-Type', 'application/pdf');
     certificate.info.Title = 'CertificadoDePago';
     certificate.pipe(response);
